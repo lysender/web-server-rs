@@ -2,6 +2,7 @@ use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
+use tracing::{error, info};
 
 pub fn run() {
     let listener = TcpListener::bind("127.0.0.1:3000").unwrap();
@@ -16,7 +17,13 @@ fn handle_connect(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).unwrap();
 
-    // println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
+    // Log the first line
+    let lines: Vec<String> = String::from_utf8_lossy(&buffer[..])
+        .lines()
+        .map(|x| x.to_string())
+        .collect();
+
+    info!("{}", lines[0]);
 
     // Basic routing capability
     let get = b"GET / HTTP/1.1\r\n";
