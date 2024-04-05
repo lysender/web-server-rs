@@ -10,33 +10,45 @@ use tracing::info;
 
 pub struct WorkerPool {
     workers: Vec<Worker>,
-    sender: Sender<Job>,
+    sender: Sender<Message>,
 }
 
 struct Worker {
     id: usize,
-    thread: JoinHandle<()>,
+    thread: Option<JoinHandle<()>>,
 }
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
+enum Message {
+    NewJob(Job),
+    Terminate,
+}
+
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<Receiver<Job>>>) -> Worker {
+    fn new(id: usize, receiver: Arc<Mutex<Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || {
             // Just keep looping and waiting for a job to execute
             loop {
-                let job = receiver
-                    .lock()
-                    .unwrap()
-                    .recv()
-                    .expect("Could not receive job");
+                let message = receiver.lock().unwrap().recv().unwrap();
 
-                info!("Worker {} got a job; executing.", id);
-                job();
+                match message {
+                    Message::NewJob(job) => {
+                        info!("Worker {} got a job; executing.", id);
+                        job();
+                    }
+                    Message::Terminate => {
+                        info!("Worker {} was told to terminate.", id);
+                        break;
+                    }
+                }
             }
         });
 
-        Worker { id, thread }
+        Worker {
+            id,
+            thread: Some(thread),
+        }
     }
 }
 
@@ -60,6 +72,29 @@ impl WorkerPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.send(job).unwrap();
+        self.sender.send(Message::NewJob(job)).unwrap();
+    }
+}
+
+impl Drop for WorkerPool {
+    fn drop(&mut self) {
+        info!("Sending terminate message to all workers.");
+
+        // Doesn't send to specific worker but all workers will
+        // eventually get a terminate message
+        for _ in &self.workers {
+            self.sender.send(Message::Terminate).unwrap();
+        }
+
+        info!("Shutting down all workers.");
+
+        for worker in &mut self.workers {
+            info!("Shutting down worker {}", worker.id);
+
+            // Join method ensures that each worker has enough time to finish
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
     }
 }

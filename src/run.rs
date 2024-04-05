@@ -2,7 +2,6 @@ use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
-use std::thread;
 use tracing::info;
 
 use crate::worker::WorkerPool;
@@ -18,6 +17,8 @@ pub fn run() {
             handle_connect(stream);
         });
     }
+
+    info!("Shutting down.");
 }
 
 fn handle_connect(mut stream: TcpStream) {
