@@ -1,3 +1,8 @@
+mod error;
+mod run;
+
+use run::run;
+
 fn main() {
-    println!("Hello, world!");
+    run();
 }
