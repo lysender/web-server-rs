@@ -2,14 +2,21 @@ use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
-use tracing::{error, info};
+use std::thread;
+use tracing::info;
+
+use crate::worker::WorkerPool;
 
 pub fn run() {
     let listener = TcpListener::bind("127.0.0.1:3000").unwrap();
+    let worker_pool = WorkerPool::new(4);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        handle_connect(stream);
+
+        worker_pool.execute(|| {
+            handle_connect(stream);
+        });
     }
 }
 
@@ -27,7 +34,12 @@ fn handle_connect(mut stream: TcpStream) {
 
     // Basic routing capability
     let get = b"GET / HTTP/1.1\r\n";
+    let sleep = b"GET /sleep HTTP/1.1\r\n";
+
     let (status_line, filename) = if buffer.starts_with(get) {
+        ("HTTP/1.1 200 OK", "index.html")
+    } else if buffer.starts_with(sleep) {
+        std::thread::sleep(std::time::Duration::from_secs(5));
         ("HTTP/1.1 200 OK", "index.html")
     } else {
         ("HTTP/1.1 404 NOT FOUND", "404.html")
