@@ -24,7 +24,7 @@ pub fn run() {
     info!("Shutting down.");
 }
 
-fn handle_connect(mut stream: TcpStream) {
+fn handle_connect(stream: TcpStream) {
     let reader = BufReader::new(&stream);
     let request: Vec<_> = reader
         .lines()
