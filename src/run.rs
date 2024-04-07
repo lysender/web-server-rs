@@ -5,11 +5,11 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 use tracing::info;
 
-use crate::worker::WorkerPool;
+use crate::worker::ThreadPool;
 
 pub fn run() {
     let listener = TcpListener::bind("127.0.0.1:3000").unwrap();
-    let worker_pool = WorkerPool::new(4);
+    let worker_pool = ThreadPool::new(4);
 
     info!("Server started on port 3000");
 

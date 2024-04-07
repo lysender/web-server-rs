@@ -8,7 +8,7 @@ use std::{
 
 use tracing::info;
 
-pub struct WorkerPool {
+pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Sender<Message>,
 }
@@ -52,8 +52,8 @@ impl Worker {
     }
 }
 
-impl WorkerPool {
-    pub fn new(size: usize) -> WorkerPool {
+impl ThreadPool {
+    pub fn new(size: usize) -> ThreadPool {
         assert!(size > 0 && size < 1000);
 
         let (sender, receiver) = mpsc::channel();
@@ -64,7 +64,7 @@ impl WorkerPool {
             workers.push(Worker::new(id, Arc::clone(&shared_receiver)));
         }
 
-        WorkerPool { workers, sender }
+        ThreadPool { workers, sender }
     }
 
     pub fn execute<F>(&self, f: F)
@@ -76,7 +76,7 @@ impl WorkerPool {
     }
 }
 
-impl Drop for WorkerPool {
+impl Drop for ThreadPool {
     fn drop(&mut self) {
         info!("Sending terminate message to all workers.");
 
